@@ -6,50 +6,72 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-22.04  # Use Ubuntu 22.04
 
     steps:
       # Step 1: Checkout the code
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Set up Docker
+      # Step 2: Set up Docker and resolve package conflicts
       - name: Set up Docker
         run: |
           sudo apt-get update
-          sudo apt-get install -y docker.io
+          sudo apt-get remove -y containerd  # Remove conflicting package (containerd)
+          sudo apt-get install -y docker.io  # Install Docker without conflicts
           sudo systemctl start docker
 
       # Step 3: Pull official Ubuntu Docker Image
       - name: Pull Ubuntu Docker Image
         run: |
-          docker pull ubuntu:20.04
+          docker pull ubuntu:22.04  # Use Ubuntu 22.04 image
 
       # Step 4: Fix Package Issues and Install Dependencies
       - name: Fix Package Issues
         run: |
-           docker run --rm \
-           -v ${PWD}:/project \
-           -w /project \
-           --user $(id -u):$(id -g) \
-           ubuntu:22.04 bash -c " \  # Update to Ubuntu 22.04
-           apt-get update && \
-           apt-get -f install -y && \  # Repair broken installations
-           apt-get autoremove -y && \  # Remove unused packages
-           apt-get autoclean -y && \  # Clean up old packages
-           apt-get update && \
-           apt-get install -y software-properties-common && \
-           add-apt-repository ppa:deadsnakes/ppa -y && \
-           apt-get update && \
-           apt-get install -y python3.10 python3.10-venv openjdk-11-jdk autoconf libtool pkg-config zlib1g-dev libffi-dev libssl-dev build-essential git unzip wget"
-      # Step 5: Build APK using Docker
+          docker run --rm \
+            -v ${PWD}:/project \
+            -w /project \
+            ubuntu:22.04 bash -c " \
+            apt-get update && \
+            apt-get -f install -y && \  # Repair broken installations
+            apt-get autoremove -y && \  # Remove unused packages
+            apt-get autoclean -y && \  # Clean up old packages
+            apt-get update && \
+            apt-get install -y software-properties-common && \
+            add-apt-repository ppa:deadsnakes/ppa -y && \
+            apt-get update && \
+            apt-get install -y python3.10 python3.10-venv openjdk-11-jdk autoconf libtool pkg-config zlib1g-dev libffi-dev libssl-dev build-essential git unzip wget"
+
+      # Step 5: Show Held Packages (Optional)
+      - name: Show Held Packages
+        run: |
+          docker run --rm \
+            -v ${PWD}:/project \
+            -w /project \
+            ubuntu:22.04 bash -c " \
+            apt-get update && \
+            apt-mark showhold"  # Display held packages
+
+      # Step 6: Unhold Packages if Necessary (Optional)
+      - name: Unhold Packages
+        if: failure()  # Run only if previous step fails
+        run: |
+          docker run --rm \
+            -v ${PWD}:/project \
+            -w /project \
+            ubuntu:22.04 bash -c " \
+            apt-get update && \
+            apt-mark unhold containerd.io docker.io"  # Unhold conflicting packages
+
+      # Step 7: Build APK using Docker
       - name: Build APK using Docker
         run: |
           docker run --rm \
             -v ${PWD}:/project \
             -w /project \
             --user $(id -u):$(id -g) \
-            ubuntu:20.04 bash -c " \
+            ubuntu:22.04 bash -c " \
             python3.10 -m venv env && \
             source env/bin/activate && \
             python -m pip install --upgrade pip setuptools wheel && \
@@ -57,7 +79,7 @@ jobs:
             if [ ! -f buildozer.spec ]; then buildozer init --profile=android; fi && \
             buildozer --noinput android debug"
 
-      # Step 6: Upload APK
+      # Step 8: Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
