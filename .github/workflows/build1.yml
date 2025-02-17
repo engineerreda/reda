@@ -13,11 +13,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Step 2: Set up Docker and resolve package conflicts
+      # Step 2: Set up Docker
       - name: Set up Docker
         run: |
           sudo apt-get update
-          sudo apt-get purge -y containerd*  # Remove all conflicting containerd packages
+          sudo apt-get purge -y containerd*  # Remove conflicting containerd packages
           sudo apt-get install -y docker.io  # Install Docker without conflicts
           sudo systemctl start docker
 
@@ -43,11 +43,12 @@ jobs:
             -w /project \
             ubuntu:22.04 bash -c " \
             apt-get update && \
-            apt-get -f install -y && \  # Repair broken installations
             apt-get install -y software-properties-common && \
             add-apt-repository ppa:deadsnakes/ppa -y && \
             apt-get update && \
-            apt-get install -y python3.10 python3.10-venv openjdk-11-jdk autoconf libtool pkg-config zlib1g-dev libffi-dev libssl-dev build-essential git unzip wget"
+            apt-get install -y python3.10 python3.10-venv && \  # Install Python 3.10
+            update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.10 1 && \  # Add Python 3.10 to PATH
+            python3 --version"  # Verify Python installation
 
       # Step 6: Build APK using Docker
       - name: Build APK using Docker
@@ -57,7 +58,7 @@ jobs:
             -w /project \
             --user $(id -u):$(id -g) \
             ubuntu:22.04 bash -c " \
-            python3.10 -m venv env && \
+            python3 -m venv env && \
             source env/bin/activate && \
             python -m pip install --upgrade pip setuptools wheel && \
             pip install buildozer cython kivy && \
