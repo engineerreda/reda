@@ -17,17 +17,26 @@ jobs:
       - name: Set up Docker
         run: |
           sudo apt-get update
-          sudo apt-get remove -y containerd  # Remove conflicting package (containerd)
+          sudo apt-get purge -y containerd*  # Remove all conflicting containerd packages
           sudo apt-get install -y docker.io  # Install Docker without conflicts
           sudo systemctl start docker
 
-      # Step 3: Pull official Ubuntu Docker Image
+      # Step 3: Fix Held Packages
+      - name: Fix Held Packages
+        run: |
+          sudo apt-get update
+          sudo apt-mark unhold $(sudo apt-mark showhold) || true  # Unhold all held packages
+          sudo apt-get -f install -y  # Fix broken dependencies
+          sudo apt-get autoremove -y  # Remove unused packages
+          sudo apt-get autoclean -y  # Clean old packages
+
+      # Step 4: Pull official Ubuntu Docker Image
       - name: Pull Ubuntu Docker Image
         run: |
           docker pull ubuntu:22.04  # Use Ubuntu 22.04 image
 
-      # Step 4: Fix Package Issues and Install Dependencies
-      - name: Fix Package Issues
+      # Step 5: Install Dependencies inside Docker
+      - name: Install Dependencies
         run: |
           docker run --rm \
             -v ${PWD}:/project \
@@ -35,36 +44,12 @@ jobs:
             ubuntu:22.04 bash -c " \
             apt-get update && \
             apt-get -f install -y && \  # Repair broken installations
-            apt-get autoremove -y && \  # Remove unused packages
-            apt-get autoclean -y && \  # Clean up old packages
-            apt-get update && \
             apt-get install -y software-properties-common && \
             add-apt-repository ppa:deadsnakes/ppa -y && \
             apt-get update && \
             apt-get install -y python3.10 python3.10-venv openjdk-11-jdk autoconf libtool pkg-config zlib1g-dev libffi-dev libssl-dev build-essential git unzip wget"
 
-      # Step 5: Show Held Packages (Optional)
-      - name: Show Held Packages
-        run: |
-          docker run --rm \
-            -v ${PWD}:/project \
-            -w /project \
-            ubuntu:22.04 bash -c " \
-            apt-get update && \
-            apt-mark showhold"  # Display held packages
-
-      # Step 6: Unhold Packages if Necessary (Optional)
-      - name: Unhold Packages
-        if: failure()  # Run only if previous step fails
-        run: |
-          docker run --rm \
-            -v ${PWD}:/project \
-            -w /project \
-            ubuntu:22.04 bash -c " \
-            apt-get update && \
-            apt-mark unhold containerd.io docker.io"  # Unhold conflicting packages
-
-      # Step 7: Build APK using Docker
+      # Step 6: Build APK using Docker
       - name: Build APK using Docker
         run: |
           docker run --rm \
@@ -79,7 +64,7 @@ jobs:
             if [ ! -f buildozer.spec ]; then buildozer init --profile=android; fi && \
             buildozer --noinput android debug"
 
-      # Step 8: Upload APK
+      # Step 7: Upload APK
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
