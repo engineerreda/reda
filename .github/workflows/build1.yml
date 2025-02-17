@@ -60,7 +60,7 @@ jobs:
             --user $(id -u):$(id -g) \
             ubuntu:22.04 bash -c " \
             python3 -m venv env && \  # Create a virtual environment
-            source env/bin/activate && \  # Activate the virtual environment
+            source env/bin/activate || { echo 'Error: Virtual environment activation failed!'; exit 1; } && \  # Activate the virtual environment or fail with an error message
             python -m pip install --upgrade pip setuptools wheel && \  # Upgrade pip and install dependencies
             pip install buildozer cython kivy && \  # Install Buildozer and its requirements
             if [ ! -f buildozer.spec ]; then buildozer init --profile=android; fi && \  # Create buildozer.spec if missing
