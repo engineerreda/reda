@@ -48,41 +48,45 @@ jobs:
             if [ ! -f /usr/bin/python3 ]; then ln -s /usr/bin/python3.10 /usr/bin/python3; fi && \  # Ensure python3 points to python3.10
             if ! command -v python3 &> /dev/null; then echo 'Error: Python 3 installation failed!'; exit 1; else python3 --version; fi"  # Verify Python installation or fail with an error message
 
+      # Step 6: Build APK using Docker
       - name: Build APK using Docker
         run: |
-           docker run --rm \
-            -v ${PWD}:/project \
-            -w /project \
-            --user $(id -u):$(id -g) \
-            ubuntu:22.04 bash -c " \
-            # التأكد من تثبيت Python 3
-            if ! command -v python3 &> /dev/null; then \
-              echo 'Error: Python 3 is not installed!'; exit 1; \
-            fi && \
-            # التأكد من تثبيت pip
-            if ! command -v pip &> /dev/null; then \
-              echo 'Error: pip is not installed!'; exit 1; \
-            fi && \
-            # إنشاء بيئة افتراضية (Virtual Environment)
-            python3 -m venv env || { echo 'Error: Failed to create virtual environment!'; exit 1; } && \
-            source env/bin/activate || { echo 'Error: Virtual environment activation failed!'; exit 1; } && \
-            # تحديث pip وتثبيت الحزم الضرورية
-            python -m pip install --upgrade pip setuptools wheel && \
-            pip install buildozer cython kivy && \
-            # التأكد من أن ملف buildozer.spec موجود وإنشائه إذا لم يكن موجودًا
-            if [ ! -f buildozer.spec ]; then \
-              echo 'Error: buildozer.spec not found!'; exit 1; \
-            fi && \
-            # بناء الـ APK
-            echo 'Building APK...' && \
-            buildozer --noinput android debug && \
-            # التأكد من وجود ملف الـ APK داخل مجلد bin
-            if [ -d bin ]; then \
-              ls -la bin/; \
-            else \
-              echo 'Error: bin directory not found!'; exit 1; \
-            fi"
-
+         docker run --rm \
+          -v ${PWD}:/project \
+          -w /project \
+          --user $(id -u):$(id -g) \
+          ubuntu:22.04 bash -c " \
+          # تحديث الحزم وتثبيت Python3
+          apt-get update && \
+          apt-get install -y python3.10 python3.10-venv python3.10-pip && \
+          # التأكد من أن Python3 هو python3.10
+          ln -s /usr/bin/python3.10 /usr/bin/python3 && \
+          if ! command -v python3 &> /dev/null; then \
+            echo 'Error: Python 3 is not installed!'; exit 1; \
+          fi && \
+          # التأكد من تثبيت pip
+          if ! command -v pip &> /dev/null; then \
+            echo 'Error: pip is not installed!'; exit 1; \
+          fi && \
+          # إنشاء بيئة افتراضية
+          python3 -m venv env || { echo 'Error: Failed to create virtual environment!'; exit 1; } && \
+          source env/bin/activate || { echo 'Error: Virtual environment activation failed!'; exit 1; } && \
+          # تثبيت الحزم الضرورية
+          python -m pip install --upgrade pip setuptools wheel && \
+          pip install buildozer cython kivy && \
+          # التأكد من أن ملف buildozer.spec موجود
+          if [ ! -f buildozer.spec ]; then \
+            echo 'Error: buildozer.spec not found!'; exit 1; \
+          fi && \
+          # بناء الـ APK
+          echo 'Building APK...' && \
+          buildozer --noinput android debug && \
+          # التأكد من وجود ملف الـ APK في مجلد bin
+          if [ -d bin ]; then \
+            ls -la bin/; \
+          else \
+            echo 'Error: bin directory not found!'; exit 1; \
+          fi"
       # Step 7: Upload APK
       - name: Upload APK
         if: success()  # Run only if previous step succeeds
