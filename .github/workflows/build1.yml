@@ -43,11 +43,10 @@ jobs:
             apt-get update && \
             apt-get install -y software-properties-common curl wget && \  # Install essential dependencies
             curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && \  # Optional: Install Node.js if needed
-            add-apt-repository ppa:deadsnakes/ppa -y || { echo 'Error: Failed to add deadsnakes PPA!'; exit 1; } && \  # Add deadsnakes PPA or fail with an error message
+            add-apt-repository ppa:deadsnakes/ppa -y && \  # Add deadsnakes PPA
             apt-get update && \
             apt-get install -y python3.10 python3.10-venv python3-pip && \  # Install Python 3.10 and pip
-            if [ -f /usr/bin/python3 ]; then rm /usr/bin/python3; fi && \  # Remove existing python3 link if it exists
-            ln -s /usr/bin/python3.10 /usr/bin/python3 && \  # Create a symbolic link for python3
+            if [ ! -f /usr/bin/python3 ]; then ln -s /usr/bin/python3.10 /usr/bin/python3; fi && \  # Ensure python3 points to python3.10
             if ! command -v python3 &> /dev/null; then echo 'Error: Python 3 installation failed!'; exit 1; else python3 --version; fi"  # Verify Python installation or fail with an error message
 
       # Step 6: Build APK using Docker
