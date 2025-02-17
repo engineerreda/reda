@@ -46,9 +46,14 @@ jobs:
             add-apt-repository ppa:deadsnakes/ppa -y && \  # Add deadsnakes PPA
             apt-get update && \
             apt-get install -y python3.10 python3.10-venv python3.10-pip && \  # Ensure Python 3 and dependencies are installed
-            ln -s /usr/bin/python3.10 /usr/bin/python3 && \  # Ensure python3 points to python3.10
+            if [ ! -f /usr/bin/python3 ] || [ ! -L /usr/bin/python3 ]; then ln -s /usr/bin/python3.10 /usr/bin/python3; fi && \  # Ensure python3 points to python3.10 if link doesn't exist
             if ! command -v python3 &> /dev/null; then echo 'Error: Python 3 is not installed!'; exit 1; fi && \
-            if ! command -v pip &> /dev/null; then echo 'Error: pip is not installed!'; exit 1; fi && \
+            if ! command -v pip &> /dev/null; then \
+              echo 'pip not found. Installing pip...' && \
+              curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
+              python3 get-pip.py && \
+              rm get-pip.py; \
+            fi && \
             python3 --version && \
             pip --version"  # Verify Python and pip installation
 
@@ -60,31 +65,32 @@ jobs:
             -w /project \
             --user $(id -u):$(id -g) \
             ubuntu:22.04 bash -c " \
-            # التأكد من تثبيت Python 3
             apt-get update && \
             apt-get install -y python3.10 python3.10-venv python3.10-pip && \
             ln -s /usr/bin/python3.10 /usr/bin/python3 && \
             if ! command -v python3 &> /dev/null; then \
               echo 'Error: Python 3 is not installed!'; exit 1; \
             fi && \
-            # التأكد من تثبيت pip
             if ! command -v pip &> /dev/null; then \
-              echo 'Error: pip is not installed!'; exit 1; \
+              echo 'pip not found. Installing pip...' && \
+              curl https://bootstrap.pypa.io/get-pip.py -o get-pip.py && \
+              python3 get-pip.py && \
+              rm get-pip.py; \
             fi && \
-            # إنشاء بيئة افتراضية
+            # Create virtual environment
             python3 -m venv env || { echo 'Error: Failed to create virtual environment!'; exit 1; } && \
             source env/bin/activate || { echo 'Error: Virtual environment activation failed!'; exit 1; } && \
-            # تثبيت الحزم الضرورية
+            # Install dependencies
             python -m pip install --upgrade pip setuptools wheel && \
             pip install buildozer cython kivy && \
-            # التأكد من أن ملف buildozer.spec موجود
+            # Check if buildozer.spec exists
             if [ ! -f buildozer.spec ]; then \
               echo 'Error: buildozer.spec not found!'; exit 1; \
             fi && \
-            # بناء الـ APK
+            # Build APK
             echo 'Building APK...' && \
             buildozer --noinput android debug && \
-            # التأكد من وجود ملف الـ APK في مجلد bin
+            # Check if APK is in bin directory
             if [ -d bin ]; then \
               ls -la bin/; \
             else \
