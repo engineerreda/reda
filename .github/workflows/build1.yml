@@ -43,8 +43,9 @@ jobs:
             -w /project \
             ubuntu:22.04 bash -c " \
             apt-get update && \
-            apt-get install -y software-properties-common && \
-            add-apt-repository ppa:deadsnakes/ppa -y && \
+            apt-get install -y software-properties-common curl wget && \  # Install essential dependencies
+            curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && \  # Optional: Install Node.js if needed
+            add-apt-repository ppa:deadsnakes/ppa -y || { echo 'Error: Failed to add deadsnakes PPA!'; exit 1; } && \  # Add deadsnakes PPA or fail with an error message
             apt-get update && \
             apt-get install -y python3.10 python3.10-venv python3-pip && \  # Install Python 3.10 and pip
             if [ -f /usr/bin/python3 ]; then rm /usr/bin/python3; fi && \  # Remove existing python3 link if it exists
