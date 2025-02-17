@@ -46,9 +46,9 @@ jobs:
             apt-get install -y software-properties-common && \
             add-apt-repository ppa:deadsnakes/ppa -y && \
             apt-get update && \
-            apt-get install -y python3.10 python3.10-venv python3-pip && \  # Install Python 3.10 and pip
-            ln -s /usr/bin/python3.10 /usr/bin/python3 && \  # Create a symbolic link for python3
-            python3 --version"  # Verify Python installation
+            apt-get install -y python3.10 python3.10-venv python3-pip && \
+            ln -s /usr/bin/python3.10 /usr/bin/python3 && \
+            python3 --version"
 
       # Step 6: Build APK using Docker
       - name: Build APK using Docker
@@ -62,11 +62,14 @@ jobs:
             source env/bin/activate && \
             python -m pip install --upgrade pip setuptools wheel && \
             pip install buildozer cython kivy && \
-            if [ ! -f buildozer.spec ]; then buildozer init --profile=android; fi && \
-            buildozer --noinput android debug"
+            if [ ! -f buildozer.spec ]; then buildozer init --profile=android; fi && \  # Create buildozer.spec if missing
+            echo 'Building APK...' && \
+            buildozer --noinput android debug && \  # Build the APK
+            ls -la bin/"  # List files in the bin directory to verify APK creation
 
       # Step 7: Upload APK
       - name: Upload APK
+        if: success()  # Run only if previous step succeeds
         uses: actions/upload-artifact@v4
         with:
           name: package
