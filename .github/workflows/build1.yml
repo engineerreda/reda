@@ -59,7 +59,8 @@ jobs:
             -w /project \
             --user $(id -u):$(id -g) \
             ubuntu:22.04 bash -c " \
-            python3 -m venv env && \  # Create a virtual environment
+            if ! command -v python3 &> /dev/null; then echo 'Error: Python 3 is not installed!'; exit 1; fi && \  # Check if Python 3 is installed
+            python3 -m venv env || { echo 'Error: Failed to create virtual environment!'; exit 1; } && \  # Create a virtual environment or fail with an error message
             source env/bin/activate || { echo 'Error: Virtual environment activation failed!'; exit 1; } && \  # Activate the virtual environment or fail with an error message
             python -m pip install --upgrade pip setuptools wheel && \  # Upgrade pip and install dependencies
             pip install buildozer cython kivy && \  # Install Buildozer and its requirements
